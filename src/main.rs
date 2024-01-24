@@ -161,7 +161,7 @@ fn main() {
     };
     
 
-    println!("pi:\tthetaW:\tTajima's D:\tTajima's D normalized:\tH:");
+    println!("gene:\tpi:\tthetaW:\tTajima's D:\tTajima's D normalized:\tH:");
     for gene in gene_tmppi.keys() {
         let tmp = gene_tmppi.get(gene).unwrap();
   
@@ -213,6 +213,6 @@ fn main() {
           let hache = h_tmp as f64/ ((tipi as f64 * (tipi as f64 - 1.0)) / 2.0);
           let final_h = pi - hache;
 
-          println!("{}\t{}\t{}\t{}\t{}", pi, theta, tajd, tajd/tajd_min, final_h);
+          println!("{}\t{}\t{}\t{}\t{}\t{}", gene,  pi, theta, tajd, tajd/tajd_min, final_h);
     }
 }
