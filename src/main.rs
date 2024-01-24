@@ -112,7 +112,6 @@ fn main() {
         }
 
         let gene_symbol_option = v["primary_snapshot_data"]["allele_annotations"][freq_idx]["assembly_annotation"][0]["genes"][0]["locus"].as_str();
-        let gene_symbol = v["primary_snapshot_data"]["allele_annotations"][freq_idx]["assembly_annotation"][0]["genes"][0]["locus"].as_str().unwrap();
 
         if let Some(gene_symbol) = gene_symbol_option {
             // gene_symbol is not None, you can use it here
@@ -126,14 +125,15 @@ fn main() {
                 }
             } 
         } else {
-            println!("failed to get gene symbol: {}", v["refsnp_id"]);
+            eprintln!("failed to get gene symbol: {}", v["refsnp_id"]);
             continue;
         }        
 
         if freq_idx == 127 {
-            println!("failed to get freq_idx: {}", v["refsnp_id"]);
+            eprintln!("failed to get freq_idx: {}", v["refsnp_id"]);
             continue;
         }
+        let gene_symbol = v["primary_snapshot_data"]["allele_annotations"][freq_idx]["assembly_annotation"][0]["genes"][0]["locus"].as_str().unwrap();
         // let vt1 = v["primary_snapshot_data"]["allele_annotations"][freq_idx]["assembly_annotation"][0]["genes"][0]["rnas"][0]["sequence_ontology"][0]["name"].to_string();
         for idx in 0..v["primary_snapshot_data"]["allele_annotations"][freq_idx]["frequency"].as_array().unwrap().len() {
             a_count += v["primary_snapshot_data"]["allele_annotations"][freq_idx]["frequency"][idx]["allele_count"].as_u64().unwrap() as u64;
@@ -149,21 +149,19 @@ fn main() {
             if tmp.contains_key(&tmp_pos) {
                 let tmp2 = tmp.get(&tmp_pos).unwrap() + 1;
                 tmp.insert(tmp_pos, tmp2);
-                println!("test1: {}\t{}\t{}", gene_symbol, a_count, c_count);
             }
             else {
                 tmp.insert(tmp_pos, 1);
-                println!("test2: {}\t{}\t{}", gene_symbol, a_count, c_count);
             }
         }
         else {
             gene_tmppi.insert(gene_symbol.to_string(), HashMap::from([(tmp_pos, 1),]));
-            println!("test3: {}\t{}\t{}", gene_symbol, a_count, c_count);
         }
 
     };
     
 
+    println!("pi:\tthetaW:\tTajima's D:\tTajima's D normalized:\tH:");
     for gene in gene_tmppi.keys() {
         let tmp = gene_tmppi.get(gene).unwrap();
   
@@ -183,7 +181,7 @@ fn main() {
             pi_min_tmp += pos.total * (pos.total - 1) * (tmp.get(pos).unwrap().clone() as u64);
             h_tmp +=  pos.refcount.pow(2) * (tmp.get(pos).unwrap().clone() as u64);
             seg += tmp.get(pos).unwrap().clone() as u64;
-            println!("{}\t{}\t{}\t{}", gene, pos.refcount, pos.total, tmp.get(pos).unwrap());
+            //println!("{}\t{}\t{}\t{}", gene, pos.refcount, pos.total, tmp.get(pos).unwrap());
         }
 
         // calculate a_1
@@ -215,7 +213,6 @@ fn main() {
           let hache = h_tmp as f64/ ((tipi as f64 * (tipi as f64 - 1.0)) / 2.0);
           let final_h = pi - hache;
 
-          println!("pi:\tthetaW:\tTajima's D:\tTajima's D normalized:\tH:");
           println!("{}\t{}\t{}\t{}\t{}", pi, theta, tajd, tajd/tajd_min, final_h);
     }
 }
