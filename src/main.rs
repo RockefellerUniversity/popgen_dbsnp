@@ -41,6 +41,10 @@ struct Args {
     /// dbsnp json file
     #[arg(short, long)]
     dbsnp: String,
+
+    /// use ExAC dataset only
+    #[arg(short, long)]
+    exac: bool,
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]
@@ -51,6 +55,7 @@ struct PiTmp {
 fn main() {
   let args = Args::parse();
   let mut exon_posset: HashMap<String, HashMap<u32, bool>> = HashMap::new();
+  //eprintln!("ExAC: {}", args.exac);
 
   // Read in pi values
   if let Ok(lines) = read_lines(args.gtf) {
@@ -91,6 +96,12 @@ fn main() {
     let reader = BufReader::new(BzDecoder::new(file));
     for line in reader.lines() {
         let l = line.unwrap();
+        if args.exac {
+            if !l.contains("ExAC") {
+		//eprintln!("ignored");
+                continue;
+            }
+        }
         let v: Value = serde_json::from_str(&l).unwrap();
 
         let mut a_count: u64 = 0;
@@ -136,11 +147,19 @@ fn main() {
         let gene_symbol = v["primary_snapshot_data"]["allele_annotations"][freq_idx]["assembly_annotation"][0]["genes"][0]["locus"].as_str().unwrap();
         // let vt1 = v["primary_snapshot_data"]["allele_annotations"][freq_idx]["assembly_annotation"][0]["genes"][0]["rnas"][0]["sequence_ontology"][0]["name"].to_string();
         for idx in 0..v["primary_snapshot_data"]["allele_annotations"][freq_idx]["frequency"].as_array().unwrap().len() {
-            a_count += v["primary_snapshot_data"]["allele_annotations"][freq_idx]["frequency"][idx]["allele_count"].as_u64().unwrap() as u64;
-            c_count += v["primary_snapshot_data"]["allele_annotations"][freq_idx]["frequency"][idx]["total_count"].as_u64().unwrap() as u64;
+            if args.exac {
+                if v["primary_snapshot_data"]["allele_annotations"][freq_idx]["frequency"][idx]["study_name"].as_str().unwrap() == "ExAC" {
+                    a_count += v["primary_snapshot_data"]["allele_annotations"][freq_idx]["frequency"][idx]["allele_count"].as_u64().unwrap() as u64;
+                    c_count += v["primary_snapshot_data"]["allele_annotations"][freq_idx]["frequency"][idx]["total_count"].as_u64().unwrap() as u64;
+                }
+            }
+            else {
+                a_count += v["primary_snapshot_data"]["allele_annotations"][freq_idx]["frequency"][idx]["allele_count"].as_u64().unwrap() as u64;
+                c_count += v["primary_snapshot_data"]["allele_annotations"][freq_idx]["frequency"][idx]["total_count"].as_u64().unwrap() as u64;
+            }
         }
         // let vt2: String = v["primary_snapshot_data"]["variant_type"].to_string();
-        if a_count == 0 || c_count == 0 || a_count == c_count || !on_exon {
+        if a_count == 100 || c_count < 100 || a_count == c_count || !on_exon {
             continue;
         }
         let tmp_pos: PiTmp = PiTmp {total: c_count, refcount: a_count};
@@ -178,12 +197,12 @@ fn main() {
                 all_nb = pos.total;
             }
             pi_tmp += pos.refcount * (pos.total - pos.refcount) * (tmp.get(pos).unwrap().clone() as u64);
-            pi_min_tmp += pos.total * (pos.total - 1) * (tmp.get(pos).unwrap().clone() as u64);
+            pi_min_tmp += 1 * (pos.total - 1) * (tmp.get(pos).unwrap().clone() as u64);
             h_tmp +=  pos.refcount.pow(2) * (tmp.get(pos).unwrap().clone() as u64);
             seg += tmp.get(pos).unwrap().clone() as u64;
             //println!("{}\t{}\t{}\t{}", gene, pos.refcount, pos.total, tmp.get(pos).unwrap());
         }
-
+	//eprintln!("all_nb: {}", all_nb);
         // calculate a_1
         let mut a_1: f64 = 0.0;
         for m in 1..(all_nb+1) {
