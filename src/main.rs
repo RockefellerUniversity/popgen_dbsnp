@@ -40,6 +40,33 @@ fn tajd_cstes(nb: u64) -> (f64, f64) {
 	return (e1, e2);
 }
 
+fn bai(sh: u64) -> f64 {
+    let mut beh: f64 = 0.0;
+    for gna in 1..sh {
+        beh += 1.0/(gna.pow(2) as f64);
+    }
+    return beh;
+}
+
+ 
+fn hnorm(enn: u64, ess: u64, teta: f64) -> f64 {
+    let ft: f64 = teta * ( enn as f64 - 2.0) / (6.0 * (enn as f64 - 1.0));
+    let mut aah: f64 = 0.0;
+    for gnii in 1..enn {
+        aah += 1.0 / gnii as f64;
+    }
+
+    let tetacarre: f64 = ess as f64 * (ess as f64 - 1.0) / ( aah.powi(2) as f64 + bai(enn) );
+    let thrd: f64 = 18.0 * enn.pow(2) as f64 * ( 3.0 * enn as f64 + 2.0) * bai(enn+1) - (88.0 * enn.pow(3) as f64 + 9.0 * enn.pow(2) as f64 - 13.0 * enn as f64 + 6.0 ) / ( 9.0 * enn as f64 * (enn-1).pow(2) as f64);
+    let vari: f64 = thrd * tetacarre + ft;
+    let mut sqv: f64 = 0.0;
+    if vari > 0.0 {
+        sqv = vari.sqrt();
+    }
+    return sqv;
+}
+
+
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
@@ -91,7 +118,7 @@ fn main() {
             let desc_parts: Vec<&str> = desc.split("; ").collect();
             for part in desc_parts {
                 let part_parts: Vec<&str> = part.split(" ").collect();
-                if part_parts[0] == "gene_name" {
+                if part_parts[0] == "gene_id" {
                     let gene_id = part_parts[1].replace("\"", "");
                     if !exon_posset.contains_key(&gene_id) {
                         let tup: (HashMap<u32, u16>, u16) = (currexon.clone(), 0);
@@ -108,7 +135,6 @@ fn main() {
 		}        
 	}
   }
-
 
 if args.bin > 0 {
     let mut exon_posset_sorted: HashMap<String, (HashMap<u32, u16>, u16)> = HashMap::new();
@@ -183,7 +209,7 @@ if args.bin > 0 {
                 }
             } 
         } else {
-            eprintln!("failed to get gene symbol: {}", v["refsnp_id"]);
+            eprintln!("failed to get gene symbol for refsnp_id: {}", v["refsnp_id"]);
             continue;
         }        
 
@@ -227,7 +253,7 @@ if args.bin > 0 {
     };
     
 
-    println!("gene:\texon_length:\tbin:\tbinsize:\tpi:\tthetaW:\tTajima's D:\tTajima's D normalized:\tH:");
+    println!("gene:\texon_length:\tbin:\tbinsize:\tpi:\tthetaW:\tTajima's D:\tTajima's D normalized:\tH:\tH Normalized");
     for gene in gene_tmppi.keys() {
         let tmp = gene_tmppi.get(gene).unwrap();
   
@@ -247,6 +273,7 @@ if args.bin > 0 {
         let mut pi_tmp: Vec<u64> = vec![0; binnumber.clone() as usize + 1];
         let mut pi_min_tmp: Vec<u64> = vec![0; binnumber.clone() as usize + 1];
         let mut h_tmp: Vec<u64> = vec![0; binnumber.clone() as usize + 1];
+        let mut hn_tmp: Vec<u64> = vec![0; binnumber.clone() as usize + 1];
         let mut seg: Vec<u64> = vec![0; binnumber.clone() as usize + 1];
         for pos in tmp.keys() {
             let tmpbinid = pos.bin as usize;
@@ -256,6 +283,7 @@ if args.bin > 0 {
             pi_tmp[tmpbinid] += pos.refcount * (pos.total - pos.refcount) * (tmp.get(pos).unwrap().clone() as u64);
             pi_min_tmp[tmpbinid] += 1 * (pos.total - 1) * (tmp.get(pos).unwrap().clone() as u64);
             h_tmp[tmpbinid] +=  pos.refcount.pow(2) * (tmp.get(pos).unwrap().clone() as u64);
+            hn_tmp[tmpbinid] += pos.refcount * (tmp.get(pos).unwrap().clone() as u64) ;
             seg[tmpbinid] += tmp.get(pos).unwrap().clone() as u64;
             //println!("{}\t{}\t{}\t{}\t{}", gene, pos.refcount, pos.total, tmp.get(pos).unwrap(), tmpbinid);
         }
@@ -266,29 +294,37 @@ if args.bin > 0 {
             let mut tajd_min: f64 = 0.0; 
             let a_1 = fn_a_1(all_nb[i]);
 
-         let pi = pi_tmp[i] as f64 / ((all_nb[i] as f64 * (all_nb[i] as f64 - 1.0)) / 2.0) / det[i] ;
-          let pi_min = pi_min_tmp[i] as f64 / ((all_nb[i] as f64 * (all_nb[i] as f64 - 1.0)) / 2.0) / det[i] ;
-          let theta = seg[i] as f64 / a_1 / det[i];
+            let pi = pi_tmp[i] as f64 / ((all_nb[i] as f64 * (all_nb[i] as f64 - 1.0)) / 2.0) / det[i] ;
+            let pi_min = pi_min_tmp[i] as f64 / ((all_nb[i] as f64 * (all_nb[i] as f64 - 1.0)) / 2.0) / det[i] ;
+            let theta = seg[i] as f64 / a_1 / det[i];
 
-          let mut d: f64 = 0.0;
-         let mut dmin: f64 = 0.0;
-          let (e1, e2) = tajd_cstes(all_nb[i]);
-          let p1p2: f64 = e1 * seg[i] as f64 + e2 * seg[i] as f64 * (seg[i] as f64 - 1.0);
-          if pi > 0.0 && theta > 0.0 {
-          	d = pi - theta;
-          	dmin = pi_min - theta;
-            dmin = dmin.abs();
-          }
+            let mut d: f64 = 0.0;
+            let mut dmin: f64 = 0.0;
+            let (e1, e2) = tajd_cstes(all_nb[i]);
+            let p1p2: f64 = e1 * seg[i] as f64 + e2 * seg[i] as f64 * (seg[i] as f64 - 1.0);
+            if pi > 0.0 && theta > 0.0 {
+              	d = pi - theta;
+          	    dmin = pi_min - theta;
+                dmin = dmin.abs();
+            }
 
-          if p1p2 > 0.0 {
-            tajd = d * det[i] / p1p2.sqrt();
-            tajd_min = dmin * det[i] / p1p2.sqrt();
-          }
+            if p1p2 > 0.0 {
+                tajd = d * det[i] / p1p2.sqrt();
+                tajd_min = dmin * det[i] / p1p2.sqrt();
+            }
 
-          let hache = h_tmp[i] as f64/ ((all_nb[i] as f64 * (all_nb[i] as f64 - 1.0)) / 2.0);
-          let final_h = pi - hache;
+            let hache = h_tmp[i] as f64/ ((all_nb[i] as f64 * (all_nb[i] as f64 - 1.0)) / 2.0);
+            let final_h = pi - hache;
 
-          println!("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}", gene, totaldet, i, det[i], pi, theta, tajd, tajd/tajd_min, final_h);
+            let elle = hn_tmp[i] as f64 / (1.0 - all_nb[i] as f64);
+            let mut final_hnorm: f64 = 0.0;
+            let gun = hnorm(all_nb[i], seg[i], theta);
+            if gun > 0.0 {
+                final_hnorm = (pi - elle) / gun 
+            }
+
+
+            println!("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}", gene, totaldet, i, det[i], pi, theta, tajd, tajd/tajd_min, final_h, final_hnorm);
         }
     }
 }
