@@ -118,7 +118,7 @@ fn main() {
             let desc_parts: Vec<&str> = desc.split("; ").collect();
             for part in desc_parts {
                 let part_parts: Vec<&str> = part.split(" ").collect();
-                if part_parts[0] == "gene_id" {
+                if part_parts[0] == "gene_name" {
                     let gene_id = part_parts[1].replace("\"", "");
                     if !exon_posset.contains_key(&gene_id) {
                         let tup: (HashMap<u32, u16>, u16) = (currexon.clone(), 0);
