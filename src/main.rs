@@ -66,6 +66,30 @@ fn hnorm(enn: u64, ess: u64, teta: f64) -> f64 {
     return sqv;
 }
 
+fn etest_under(enn: u64, ess: u64, teta: f64) -> f64 {
+    let mut beh: f64 = 0.0;
+    for gna in 1..enn {
+        beh += 1.0/(gna.pow(2) as f64);
+    }
+
+    let mut aah: f64 = 0.0;
+    for gnii in 1..enn {
+        aah += 1.0 / gnii as f64;
+    }
+
+
+    let ft: f64 = teta * ( enn as f64 / (enn as f64 - 1.0) / 2.0 - 1.0 / aah );
+
+    let tetacarre: f64 = ess as f64 * (ess as f64 - 1.0) / ( aah.powi(2) as f64 + bai(enn) );
+    let thrd: f64 = beh / aah.powi(2) + (enn as f64 / (enn as f64 - 1.0)).powi(2) * beh * 2.0 - 2.0 * (enn as f64 * beh - enn as f64 + 1.0) / (enn as f64 - 1.0) / aah - (enn as f64 * 3.0 + 1.0) / (enn as f64 - 1.0); 
+    let vari: f64 = thrd * tetacarre + ft;
+    let mut sqv: f64 = 0.0;
+    if vari > 0.0 {
+        sqv = vari.sqrt();
+    }
+    return sqv;
+}
+
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -78,13 +102,17 @@ struct Args {
     #[arg(short, long)]
     dbsnp: String,
 
-    /// use ExAC dataset only
+    /// use study name dataset only
     #[arg(short, long)]
-    exac: bool,
+    studyname: String,
 
     /// use sliding window
     #[arg(short, long)]
     bin: u32,
+
+    /// use exon mutation only
+    #[arg(short, long)]
+    exononly: bool,
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]
@@ -97,44 +125,48 @@ struct PiTmp {
 fn main() {
   let args = Args::parse();
   let mut exon_posset: HashMap<String, (HashMap<u32, u16>, u16)> = HashMap::new();
-  eprintln!("ExAC: {}", args.exac);
+  eprintln!("Study_Name: {}", args.studyname);
   eprintln!("bin size: {}", args.bin);
+  eprintln!("Use exon only: {}", args.exononly);
 
   // Read in pi values
-  if let Ok(lines) = read_lines(args.gtf) {
-	for line in lines {
-        if let Ok(ip) = line {
-			let spl: Vec<&str> = ip.split("\t").collect();
-            if spl[2] != "exon" {
-                continue;
-            }
-			let startp = spl[3].parse::<u32>().unwrap();
-			let stopp = spl[4].parse::<u32>().unwrap();
-            let mut currexon: HashMap<u32, u16> = HashMap::new();
-            for i in startp..(stopp+1) {
-                currexon.insert(i, 0);
-            }
-            let desc = spl[8];
-            let desc_parts: Vec<&str> = desc.split("; ").collect();
-            for part in desc_parts {
-                let part_parts: Vec<&str> = part.split(" ").collect();
-                if part_parts[0] == "gene_name" {
-                    let gene_id = part_parts[1].replace("\"", "");
-                    if !exon_posset.contains_key(&gene_id) {
-                        let tup: (HashMap<u32, u16>, u16) = (currexon.clone(), 0);
-                        exon_posset.insert(gene_id, tup.clone());
-                    }
-                    else {
-                        let (tmp, tmpbin) = exon_posset.get(&gene_id).unwrap();
-                        currexon.extend(tmp.clone().into_iter());
-                        let tup: (HashMap<u32, u16>, u16) = (currexon.clone(), tmpbin.clone());
-                        exon_posset.insert(gene_id, tup.clone());
-                    }
-                }
-            }
-		}        
-	}
+if let Ok(lines) = read_lines(args.gtf) {
+  for line in lines {
+    if let Ok(ip) = line {
+      let spl: Vec<&str> = ip.split("\t").collect();
+      if spl[2] != "exon" && args.exononly {
+        continue;
+      }
+      if spl[2] != "gene" && !args.exononly {
+        continue;
+      }
+      let startp = spl[3].parse::<u32>().unwrap();
+      let stopp = spl[4].parse::<u32>().unwrap();
+      let mut currexon: HashMap<u32, u16> = HashMap::new();
+      for i in startp..(stopp+1) {
+        currexon.insert(i, 0);
+      }
+      let desc = spl[8];
+      let desc_parts: Vec<&str> = desc.split("; ").collect();
+      for part in desc_parts {
+        let part_parts: Vec<&str> = part.split(" ").collect();
+        if part_parts[0] == "gene_name" {
+          let gene_id = part_parts[1].replace("\"", "");
+          if !exon_posset.contains_key(&gene_id) {
+            let tup: (HashMap<u32, u16>, u16) = (currexon.clone(), 0);
+            exon_posset.insert(gene_id, tup.clone());
+          }
+          else {
+            let (tmp, tmpbin) = exon_posset.get(&gene_id).unwrap();
+            currexon.extend(tmp.clone().into_iter());
+            let tup: (HashMap<u32, u16>, u16) = (currexon.clone(), tmpbin.clone());
+            exon_posset.insert(gene_id, tup.clone());
+          }
+        }
+      }
+    }
   }
+}
 
 if args.bin > 0 {
     let mut exon_posset_sorted: HashMap<String, (HashMap<u32, u16>, u16)> = HashMap::new();
@@ -165,12 +197,9 @@ if args.bin > 0 {
     let reader = BufReader::new(BzDecoder::new(file));
     for line in reader.lines() {
         let l = line.unwrap();
-        if args.exac {
-            if !l.contains("ExAC") {
-		//eprintln!("ignored");
-                continue;
-            }
-        }
+          if !l.contains( &args.studyname) {
+            continue;
+          }
         let v: Value = serde_json::from_str(&l).unwrap();
 
         let mut a_count: u64 = 0;
@@ -209,7 +238,6 @@ if args.bin > 0 {
                 }
             } 
         } else {
-            eprintln!("failed to get gene symbol for refsnp_id: {}", v["refsnp_id"]);
             continue;
         }        
 
@@ -220,16 +248,16 @@ if args.bin > 0 {
         let gene_symbol = v["primary_snapshot_data"]["allele_annotations"][freq_idx]["assembly_annotation"][0]["genes"][0]["locus"].as_str().unwrap();
         // let vt1 = v["primary_snapshot_data"]["allele_annotations"][freq_idx]["assembly_annotation"][0]["genes"][0]["rnas"][0]["sequence_ontology"][0]["name"].to_string();
         for idx in 0..v["primary_snapshot_data"]["allele_annotations"][freq_idx]["frequency"].as_array().unwrap().len() {
-            if args.exac {
-                if v["primary_snapshot_data"]["allele_annotations"][freq_idx]["frequency"][idx]["study_name"].as_str().unwrap() == "ExAC" {
+            //if args.exac {
+                if v["primary_snapshot_data"]["allele_annotations"][freq_idx]["frequency"][idx]["study_name"].as_str().unwrap() == args.studyname {
                     a_count += v["primary_snapshot_data"]["allele_annotations"][freq_idx]["frequency"][idx]["allele_count"].as_u64().unwrap() as u64;
                     c_count += v["primary_snapshot_data"]["allele_annotations"][freq_idx]["frequency"][idx]["total_count"].as_u64().unwrap() as u64;
                 }
-            }
-            else {
-                a_count += v["primary_snapshot_data"]["allele_annotations"][freq_idx]["frequency"][idx]["allele_count"].as_u64().unwrap() as u64;
-                c_count += v["primary_snapshot_data"]["allele_annotations"][freq_idx]["frequency"][idx]["total_count"].as_u64().unwrap() as u64;
-            }
+            //}
+            //else {
+            //    a_count += v["primary_snapshot_data"]["allele_annotations"][freq_idx]["frequency"][idx]["allele_count"].as_u64().unwrap() as u64;
+            //    c_count += v["primary_snapshot_data"]["allele_annotations"][freq_idx]["frequency"][idx]["total_count"].as_u64().unwrap() as u64;
+            //}
         }
         // let vt2: String = v["primary_snapshot_data"]["variant_type"].to_string();
         if a_count == 100 || c_count < 100 || a_count == c_count || !on_exon {
@@ -253,7 +281,7 @@ if args.bin > 0 {
     };
     
 
-    println!("gene:\texon_length:\tbin:\tbinsize:\tpi:\tthetaW:\tTajima's D:\tTajima's D normalized:\tH:\tH Normalized");
+    println!("gene:\texon_length:\tbin:\tbinsize:\tpi:\tthetaW:\tTajima's D:\tTajima's D normalized:\tH:\tH Normalized\tE");
     for gene in gene_tmppi.keys() {
         let tmp = gene_tmppi.get(gene).unwrap();
   
@@ -323,8 +351,14 @@ if args.bin > 0 {
                 final_hnorm = (pi - elle) / gun 
             }
 
+            let mut final_e: f64 = 0.0;
+            let eun: f64 = etest_under(all_nb[i], seg[i], theta);
+            if eun > 0.0 {
+                final_e = (elle - theta) / eun;
+            }
 
-            println!("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}", gene, totaldet, i, det[i], pi, theta, tajd, tajd/tajd_min, final_h, final_hnorm);
+
+            println!("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}", gene, totaldet, i, det[i], pi, theta, tajd, tajd/tajd_min, final_h, final_hnorm, final_e);
         }
     }
 }

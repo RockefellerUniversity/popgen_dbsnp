@@ -1,0 +1,66 @@
+---
+title: "DH test"
+author: "Wei Wang"
+date: "2024-07-24"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load the result tables from popgen_dbSNP
+
+```{r load}
+library(dplyr)
+resFiles <- dir(".", pattern = "_1kG.tsv")
+lstPerChr <- list()
+
+dhtest <- function(d, h) {
+  res <- c()
+  tot <- length(d)
+  for (i in 1:tot) {
+    res <- c(res, max(d[i], h[i]))
+  }
+  res
+}
+
+for (res in resFiles) {
+  tmpTB <- read.table(res, sep="\t", head = TRUE) %>% tibble::rownames_to_column("Gene")
+  colnames(tmpTB) <- c("gene","exonlength", "bin", "binsize", "pi", "thetaW", "D", "normD", "H", "normH", "E")
+  tmpTB$percentrankD <- percent_rank(tmpTB$D)
+  tmpTB$percentrankH <- percent_rank(tmpTB$normH)
+  tmpTB$sigD <- tmpTB$percentrankD < 0.05 
+  tmpTB$sigH <- tmpTB$percentrankH < 0.05
+  tmpTB$sigE <- percent_rank(tmpTB$E) < 0.05
+  tmpTB$DHtest <- dhtest(tmpTB$percentrankD, tmpTB$percentrankH)
+  tmpTB$percentrankDH <- percent_rank(tmpTB$DHtest)
+  tmpTB$sigDH <- tmpTB$percentrankDH < 0.05
+  tmpTB <- arrange(tmpTB, percentrankDH)
+  lstPerChr[[gsub(".popgen_1kG.tsv", "", res)]] <- tmpTB
+}
+
+wholeGenome <- bind_rows(lstPerChr, .id = "chr")
+wholeGenome$percentrankD <- percent_rank(wholeGenome$D)
+wholeGenome$percentrankH <- percent_rank(wholeGenome$normH)
+wholeGenome$sigD <- wholeGenome$percentrankD < 0.05
+wholeGenome$sigH <- wholeGenome$percentrankH < 0.05
+wholeGenome$sigE <- percent_rank(wholeGenome$normH) < 0.05
+wholeGenome$DHtest <- dhtest(wholeGenome$percentrankD, wholeGenome$percentrankH)
+wholeGenome$percentrankDH <- percent_rank(wholeGenome$DHtest)
+wholeGenome$sigDH <- wholeGenome$percentrankDH < 0.05
+wholeGenome <- arrange(wholeGenome, percentrankDH)
+
+rio::export(lstPerChr, file="perChr_DHtest_1kG.xlsx")
+rio::export(wholeGenome, file="wholeGenome_DHtest_1kG.xlsx")
+```
+
+## sessionInfo
+
+```{r}
+sessionInfo()
+```
