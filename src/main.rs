@@ -341,11 +341,10 @@ if args.bin > 0 {
                 tajd_min = dmin * det[i] / p1p2.sqrt();
             }
 
-            //let hache = h_tmp[i] as f64/ ((all_nb[i] as f64 * (all_nb[i] as f64 - 1.0)) / 2.0);
-            //let final_h = pi - hache;
+            let hache = h_tmp[i] as f64/ ((all_nb[i] as f64 * (all_nb[i] as f64 - 1.0)) / 2.0);
+            let final_h = pi - hache;
 
             let elle = hn_tmp[i] as f64 / (all_nb[i] as f64 - 1.0);
-            let final_h = 2.0 * (pi - elle) ;
             let mut final_hnorm: f64 = 0.0;
             let gun = hnorm(all_nb[i], seg[i], theta);
             if gun > 0.0 {
