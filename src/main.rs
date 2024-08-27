@@ -344,7 +344,7 @@ if args.bin > 0 {
             let hache = h_tmp[i] as f64/ ((all_nb[i] as f64 * (all_nb[i] as f64 - 1.0)) / 2.0);
             let final_h = pi - hache;
 
-            let elle = hn_tmp[i] as f64 / (1.0 - all_nb[i] as f64);
+            let elle = hn_tmp[i] as f64 / (all_nb[i] as f64 - 1.0);
             let mut final_hnorm: f64 = 0.0;
             let gun = hnorm(all_nb[i], seg[i], theta);
             if gun > 0.0 {
