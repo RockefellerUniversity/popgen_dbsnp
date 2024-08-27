@@ -345,11 +345,11 @@ if args.bin > 0 {
             //let final_h = pi - hache;
 
             let elle = hn_tmp[i] as f64 / (all_nb[i] as f64 - 1.0);
-            let final_h = 2.0 * (pi - elle)
+            let final_h = 2.0 * (pi - elle) ;
             let mut final_hnorm: f64 = 0.0;
             let gun = hnorm(all_nb[i], seg[i], theta);
             if gun > 0.0 {
-                final_hnorm = (pi - elle) / gun 
+                final_hnorm = (pi - elle) / gun ;
             }
 
             let mut final_e: f64 = 0.0;
