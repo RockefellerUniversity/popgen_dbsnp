@@ -310,8 +310,8 @@ if args.bin > 0 {
             }
             pi_tmp[tmpbinid] += pos.refcount * (pos.total - pos.refcount) * (tmp.get(pos).unwrap().clone() as u64);
             pi_min_tmp[tmpbinid] += 1 * (pos.total - 1) * (tmp.get(pos).unwrap().clone() as u64);
-            h_tmp[tmpbinid] +=  pos.refcount.pow(2) * (tmp.get(pos).unwrap().clone() as u64);
-            hn_tmp[tmpbinid] += pos.refcount * (tmp.get(pos).unwrap().clone() as u64) ;
+            h_tmp[tmpbinid] +=  (pos.total - pos.refcount).pow(2) * (tmp.get(pos).unwrap().clone() as u64);
+            hn_tmp[tmpbinid] += (pos.total - pos.refcount) * (tmp.get(pos).unwrap().clone() as u64) ;
             seg[tmpbinid] += tmp.get(pos).unwrap().clone() as u64;
             //println!("{}\t{}\t{}\t{}\t{}", gene, pos.refcount, pos.total, tmp.get(pos).unwrap(), tmpbinid);
         }
