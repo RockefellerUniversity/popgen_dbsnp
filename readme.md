@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14367749.svg)](https://doi.org/10.5281/zenodo.14367749)
+
 ## PopGen dbSNP
 
 use the dbSNP bzip2 json file and a gtf as input, calculate the Tajima's D per gene over the exon region.
